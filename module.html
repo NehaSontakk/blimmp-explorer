@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>BLIMMP - Bacteria Modules Viewer</title>
+  <style>
+    :root { --primary: #000000; --accent: #6C9B8D; --light: white; --dark: #4f86c1; --border: #ddd; --singleton-bg: #f0f0f0; --multi-bg: #fafafa; --radius: 4px; }
+    body { margin:0; padding:0; font-family:"Segoe UI",sans-serif; background:var(--light); color:var(--primary); }
+    #header-container { display:flex; justify-content:space-between; align-items:center; background:var(--primary); color:var(--light); padding:20px 40px; }
+    .tool-name { margin:0; font-size:2.5rem; font-weight:bold; }
+    .tool-fullname { margin-top:4px; font-size:0.9rem; font-style:italic; opacity:0.8; }
+    .logo { height:80px; width:auto; }
+    #page-bar { background:var(--accent); color:var(--primary); padding:10px 40px; font-size:1.4rem; font-weight:600; }
+    #toolbar { display:flex; flex-direction:column; align-items:center; gap:1rem; padding:2rem; background:var(--light); box-shadow:0 2px 4px rgba(0,0,0,0.1); }
+    .tool { font-size:1rem; border-radius:var(--radius); border:1.5px solid var(--primary); padding:0.5rem 0.75rem; }
+    .tool:hover, .tool:focus { border-color:var(--accent); outline:none; }
+    .file-upload { position:relative; display:inline-block; }
+    .file-upload .tool { background:var(--primary); color:var(--light); padding:0.75rem 1rem; cursor:pointer; }
+    .file-upload input[type=file] { position:absolute; top:0; left:0; width:100%; height:100%; opacity:0; cursor:pointer; }
+    #container { display:flex; height:calc(100vh - 260px); }
+    #sidebar { width:300px; overflow-y:auto; padding:20px; background:var(--light); border-right:1px solid var(--border); }
+    #graph-container { flex:1; display:flex; flex-wrap:wrap; align-items:flex-start; gap:10px; padding:10px; overflow-y:auto; }
+    .comp-box { border:1px solid var(--border); border-radius:var(--radius); }
+    ul.tree, ul.tree ul { list-style:none; margin:0; padding:0; }
+    ul.tree li { margin:4px 0; }
+    ul.tree li > span.toggle { cursor:pointer; font-weight:bold; }
+    ul.tree li.expanded > ul { display:block; }
+    ul.tree li > ul { display:none; margin-left:1rem; }
+    a.module-link { color:var(--dark); text-decoration:none; font-weight:bold; }
+    a.module-link:hover { text-decoration:underline; }
+    .module-info { margin-left:0.5rem; font-size:0.9rem; white-space:pre-line; }
+  </style>
+  <script src="https://unpkg.com/cytoscape@3.21.1/dist/cytoscape.min.js"></script>
+</head>
+<body>
+  <div id="header-container">
+    <div>
+      <div class="tool-name">BLIMMP</div>
+      <div class="tool-fullname">Bayesian Likelihood-based Inference of Metabolic Modules with Probabilities</div>
+    </div>
+    <img src="logo.png" alt="BLIMMP Logo" class="logo" />
+  </div>
+  <div id="page-bar">Sample Statistics for Bacterial Modules</div>
+  <div id="toolbar">
+    <label class="file-upload">
+      <span class="tool">Upload Sample JSON</span>
+      <input type="file" id="jsonUpload" accept=".json" />
+    </label>
+    <input type="number" id="thresholdInput" class="tool" placeholder="Threshold (geo_after ≥)" step="0.01" value="0" />
+    <button id="applyBtn" class="tool">Apply Threshold</button>
+  </div>
+
+  <div id="container">
+    <div id="sidebar"></div>
+    <div id="graph-container"></div>
+  </div>
+
+  <script>
+    let sectionsData = null, userData = null, threshold = 0, cachedGraph = null;
+    const accentColor = '#ffaaa5', absentColor = '#f5f3ee';
+    const cyBoxes = [];
+
+    document.getElementById('jsonUpload').addEventListener('change', e => {
+      const file = e.target.files[0]; if (!file) return;
+      const reader = new FileReader();
+      reader.onload = ev => {
+        try { userData = JSON.parse(ev.target.result); renderTree(); renderComponents(cachedGraph); }
+        catch { alert('Invalid JSON'); }
+      };
+      reader.readAsText(file);
+    });
+    document.getElementById('applyBtn').addEventListener('click', () => {
+      threshold = parseFloat(document.getElementById('thresholdInput').value) || 0;
+      renderTree(); renderComponents(cachedGraph);
+    });
+
+    function renderTree() {
+      const container = document.getElementById('sidebar'); container.innerHTML = '';
+      if (!sectionsData) return;
+      const ul = document.createElement('ul'); ul.className = 'tree';
+      Object.entries(sectionsData).forEach(([section, mods]) => {
+        const mids = Object.keys(mods);
+        const total = mids.length;
+        const presentCount = userData ? mids.filter(mid => {
+          const b = userData[mid]?.best_path;
+          return b && parseFloat(b.geo_after) >= threshold;
+        }).length : 0;
+
+        const li = document.createElement('li');
+        const span = document.createElement('span');
+        span.className = 'toggle';
+        span.textContent = userData
+          ? `${section} (${presentCount}/${total} Present)`
+          : `${section} (${total} modules)`;
+        span.addEventListener('click', () => { li.classList.toggle('expanded'); highlightCategory(mids); });
+        li.appendChild(span);
+        const sub = document.createElement('ul');
+        mids.forEach(mid => {
+          const b = userData?.[mid]?.best_path;
+          const before = b ? b.geo_before.toFixed(4) : '';
+          const after = b ? b.geo_after.toFixed(4) : '';
+          const pres = b && parseFloat(after) >= threshold;
+          const li2 = document.createElement('li');
+          const a = document.createElement('a');
+          a.textContent = mid; a.href = '#'; a.className = 'module-link';
+          a.onclick = e => { e.preventDefault(); window.location.href = `index.html?module=${encodeURIComponent(mid)}`; };
+          li2.appendChild(a);
+          if (b) {
+            const info = document.createElement('span');
+            info.className = 'module-info';
+            info.textContent = `${pres ? 'Present' : 'Absent'}\n(before: ${before}, after: ${after})`;
+            li2.appendChild(info);
+          }
+          sub.appendChild(li2);
+        });
+        li.appendChild(sub); ul.appendChild(li);
+      });
+      container.appendChild(ul);
+    }
+
+    function computeComponents(nodes, edges) {
+      const adj = {}, visited = new Set(), comps = [];
+      nodes.forEach(n => adj[n.id] = []);
+      edges.forEach(e => { adj[e.source].push(e.target); adj[e.target].push(e.source); });
+      nodes.forEach(n => {
+        if (visited.has(n.id)) return;
+        const comp = [], stack = [n.id]; visited.add(n.id);
+        while (stack.length) {
+          const u = stack.pop(); comp.push(u);
+          adj[u].forEach(v => { if (!visited.has(v)) { visited.add(v); stack.push(v); } });
+        }
+        comps.push(comp);
+      });
+      return comps;
+    }
+
+    function highlightCategory(nodeIds) {
+      cyBoxes.forEach(cy => {
+        cy.nodes().removeClass('highlight-category');
+        nodeIds.forEach(id => {
+          const n = cy.getElementById(id);
+          if (n) n.addClass('highlight-category');
+        });
+        cy.nodes().forEach(n => {
+          const p = n.hasClass('present');
+          const h = n.hasClass('highlight-category');
+          let c = absentColor;
+          if (p && h) c = '#9396d5';
+          else if (p)   c = accentColor;
+          else if (h)   c = '#a4cced';
+          n.style('background-color', c);
+        });
+      });
+    }
+
+    function renderComponents(graphJson) {
+      if (!graphJson) return; cachedGraph = graphJson;
+      const { nodes, links: edges } = graphJson;
+      const comps = computeComponents(nodes, edges);
+      const single = comps.filter(c => c.length === 1).flat();
+      const multi = comps.filter(c => c.length > 1);
+      const container = document.getElementById('graph-container'); container.innerHTML = ''; cyBoxes.length = 0;
+      let boxCount = 0;
+
+      // Helper to create a box, making first three full-width
+      function makeBox(bg, size) {
+        const box = document.createElement('div');
+        box.className = 'comp-box';
+        if (boxCount < 3) {
+          box.style.cssText = `flex:0 0 100%; width:100%; height:${size}px; background:${bg}`;
+        } else {
+          box.style.cssText = `width:${size}px; height:${size}px; background:${bg}`;
+        }
+        container.appendChild(box);
+        boxCount++;
+        return box;
+      }
+
+      // Singletons
+      if (single.length) {
+        const size = Math.min(Math.max(200, single.length * 6), 800);
+        const box = makeBox('var(--singleton-bg)', size);
+        const elems = single.map(id => ({ data: { id, present: !!(userData?.[id]?.best_path && parseFloat(userData[id].best_path.geo_after) >= threshold) } }));
+        const cy = cytoscape({
+          container: box,
+          elements: elems,
+          layout: { name: 'grid', rows: Math.ceil(Math.sqrt(elems.length)), fit: false },
+          style: [
+            { selector: 'node.present',                       style: { 'background-color': accentColor } },
+            { selector: 'node:not(.present)',                 style: { 'background-color': absentColor  } },
+            { selector: 'node.highlight-category',            style: { 'background-color': '#a4cced' } },
+            { selector: 'node.present.highlight-category',    style: { 'background-color': '#9396d5' } },
+            { selector: 'node',                               style: { label: 'data(id)', 'text-valign': 'center', 'text-halign': 'center', width: 30, height: 30, 'font-size': 8 } },
+            { selector: 'edge',                               style: { 'line-color': '#999', width: 1, 'curve-style': 'haystack' } }
+          ],
+          zoomingEnabled: true,
+          panningEnabled: true,
+          wheelSensitivity: 0,
+          minZoom: 1,
+          maxZoom: 5
+        });
+        cyBoxes.push(cy);
+        cy.nodes().forEach(n => n.toggleClass('present', n.data('present')));
+        cy.center(); cy.fit(cy.elements(), 20);
+      }
+
+    const allWeights = edges.map(e => parseFloat(e.weight ?? e.value ?? 0));
+    const minW = Math.min(...allWeights);
+    const maxW = Math.max(...allWeights);
+            // Multi-node
+      multi.forEach((comp, idx) => {
+        // second box taller only for idx === 1
+        const baseSize = Math.min(Math.max(200, Math.sqrt(comp.length) * 40), 800);
+        const size = idx === 1 ? Math.min(baseSize * 1.5, 1200) : baseSize;
+        const box = makeBox('var(--multi-bg)', size);
+
+        // include weight in edge data
+        const compNodes = comp.map(id => ({ data: { id, present: !!(userData?.[id]?.best_path && parseFloat(userData[id].best_path.geo_after) >= threshold) } }));
+         const compEdges = edges
+      .filter(e => comp.includes(e.source) && comp.includes(e.target))
+      .map((e,i) => ({
+        data: {
+          id:     `e${idx}-${i}`,
+          source: e.source,
+          target: e.target,
+          weight: parseFloat(e.weight ?? e.value ?? 0)
+        }
+      }));
+
+        const elems = [...compNodes, ...compEdges];
+        const cy = cytoscape({
+          container: box,
+          elements: elems,
+          layout: { name: 'circle', fit: false },
+          style: [
+            { selector: 'node.present',                       style: { 'background-color': accentColor } },
+            { selector: 'node:not(.present)',                 style: { 'background-color': absentColor  } },
+            { selector: 'node.highlight-category',            style: { 'background-color': '#a4cced' } },
+            { selector: 'node.present.highlight-category',    style: { 'background-color': '#9396d5' } },
+            // edge width by weight
+            {
+          selector: 'edge',
+            style: {
+                'width': `mapData(weight, ${minW}, ${maxW}, 1, 5)`,
+                'line-color': '#999',
+                'curve-style': 'haystack'
+            }},
+            {selector: 'node',                               style: { label: 'data(id)', 'text-valign': 'center', 'text-halign': 'center', width: 20, height: 20, 'font-size': 6 } }
+          ],
+          zoomingEnabled: true,
+          panningEnabled: true,
+          wheelSensitivity: 0,
+          minZoom: 1,
+          maxZoom: 5
+        });
+        cyBoxes.push(cy);
+        cy.nodes().forEach(n => n.toggleClass('present', n.data('present')));
+        cy.center(); cy.fit(cy.elements(), 20);
+      });
+
+      // after drawing all boxes, immediately color present nodes red
+      // this ensures present nodes are highlighted without waiting for a click
+      highlightCategory([]);
+    }
+
+    window.addEventListener('load', () => {
+      fetch('kegg_bacteria_modules.json')
+        .then(r => r.json())
+        .then(json => { sectionsData = json; renderTree(); });
+      fetch('module_module_graph.json')
+        .then(r => r.json())
+        .then(json => renderComponents(json));
+    });
+  </script>
+/>
