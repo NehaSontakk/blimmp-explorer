@@ -1,29 +1,26 @@
 // moduleSelector.js
-
 import { renderGraph } from "./script.js";
 console.log("renderGraph type:", typeof renderGraph);
 
 
-// URLs for your fallback JSON data
+
+// fallback graph geometry
+// The uploaded JSON will take priority over these
 export const nodesURL     = "https://raw.githubusercontent.com/NehaSontakk/Graph-Viz/refs/heads/main/all_module_nodes_Mar26-2.json";
 export const adjacencyURL = "https://raw.githubusercontent.com/NehaSontakk/Graph-Viz/refs/heads/main/all_module_adjacency_links_Mar26-2.json";
 
-// State holders
 let uploadedNodesData = null;
-//window.useDkAfter        = false;
 window.currentModuleNodes = null;
 window.currentModuleLinks = null;
 window.currentBestPath    = null;
 let threshold             = 0;
 
-// Attempt to rehydrate from localStorage
+// Restore the previous upload across page refreshes
 try {
   const stored = localStorage.getItem('uploadedNodesData');
   if (stored) {
-  uploadedNodesData = JSON.parse(stored);
-  window.currentSampleJson = uploadedNodesData; 
-
-}
+    uploadedNodesData = JSON.parse(stored);
+    window.currentSampleJson = uploadedNodesData; }
 } catch {}
 
 try {
@@ -31,9 +28,6 @@ try {
   if (!isNaN(t)) threshold = t;
 } catch {}
 
-
-
-// Simple JSON fetcher
 async function fetchJSON(url) {
   const resp = await fetch(url);
   if (!resp.ok) throw new Error(`Error fetching ${url}: ${resp.statusText}`);
@@ -52,30 +46,29 @@ async function loadAllModules() {
 function getModuleNodesFromAll(allNodesData, moduleId) {
   const blk = allNodesData?.[moduleId];
   if (!blk) return null;
-
-  // Shape A: { M00001: [ ...nodes... ] }
+  // array of nodes directly
   if (Array.isArray(blk)) return blk;
-
-  // Shape B: { M00001: { nodes: [ ... ] } }
+  // Wrap in object
   if (Array.isArray(blk.nodes)) return blk.nodes;
-
   return null;
 }
 
+// JSON.parse chokes on NaN/Infinity
+// replace before parsing
+function sanitizeJsonText(rawText) {
+  return rawText.replace(/\bNaN\b/g, "null").replace(/\bInfinity\b/g, "null");
+}
 
-// On DOM ready
+// When the DOM is ready
 window.addEventListener("DOMContentLoaded", () => {
   const uploadInput = document.getElementById("nodeJsonUpload");
   //const toggleChk   = document.getElementById("neighborToggle");
   const searchBtn   = document.getElementById("searchBtn");
   const threshInput = document.getElementById("thresholdInput");
   const moduleInput = document.getElementById("moduleInput");
-
-  // Restore threshold input
-  // Restore threshold input
+  // The threshold input is maintained
   if (threshInput) threshInput.value = threshold;
-
-  // If data was rehydrated from localStorage, reveal search immediately
+  // If data is stored in localStorage the search box shouws up immediately
   if (uploadedNodesData) {
     const row = document.getElementById("search-row");
     if (row) row.style.display = "flex";
@@ -90,12 +83,11 @@ function revealSearch() {
     if (overlayBtn) overlayBtn.style.display = "block";
   }
 
-  // ── Module text search dropdown 
+  // Values for the module text search dropdown 
   const dropdown       = document.getElementById("module-dropdown");
   let   activeIndex    = -1;
   let   searchDebounce = null;
   let   flatModules    = null;
-
 
   // Load module metadata for text search
   const META_URL = "https://raw.githubusercontent.com/NehaSontakk/Graph-Viz/refs/heads/main/kegg_bacteria_modules.json";
@@ -103,7 +95,7 @@ function revealSearch() {
     .then(r => r.json())
     .then(data => {
       window.moduleMetaData = data;
-      flatModules = null; // force rebuild on next search
+      flatModules = null; 
     })
     .catch(err => console.warn("Failed to load module metadata:", err));
 
@@ -232,7 +224,7 @@ document.getElementById("download-pdf-btn")?.addEventListener("click", async () 
       img.src = url;
     });
 
-    // --- dimensions ---
+    // graph and legend dimensions for canvas layout
     const graphBB  = svgEl.getBoundingClientRect();
     const graphW   = svgEl.viewBox?.baseVal?.width  || graphBB.width;
     const graphH   = svgEl.viewBox?.baseVal?.height || graphBB.height;
@@ -242,7 +234,7 @@ document.getElementById("download-pdf-btn")?.addEventListener("click", async () 
     const legendW     = legendBB ? legendBB.width  : 0;
     const legendH     = legendBB ? legendBB.height : 0;
 
-    // --- confidence strings ---
+    // pull confidence values to print above the graph
     const rawMod    = window.currentModuleJson || {};
     const cleanId   = window.currentModuleId   || "";
     const modBlock  =
@@ -256,9 +248,9 @@ document.getElementById("download-pdf-btn")?.addEventListener("click", async () 
     const confLine1 = `Confidence (Raw): ${confRaw}`;
     const confLine2 = `Confidence (After Influencer Propagation): ${confAfter}`;
 
-    // --- canvas layout ---
+    // combine graph + legend + confidence text onto one canvas
     const SCALE      = 2;
-    const CONF_H     = 52;   // pixels reserved at top for confidence text
+    const CONF_H     = 52;  
     const canvasW    = Math.max(graphW, graphW + legendW);
     const canvasH    = CONF_H + graphH;
 
@@ -268,24 +260,22 @@ document.getElementById("download-pdf-btn")?.addEventListener("click", async () 
     const ctx     = canvas.getContext("2d");
     ctx.scale(SCALE, SCALE);
 
-    // white background
     ctx.fillStyle = "white";
     ctx.fillRect(0, 0, canvasW, canvasH);
 
-    // confidence text
     ctx.fillStyle = "#000";
     ctx.font      = "bold 15px Segoe UI, sans-serif";
     ctx.fillText(confLine1, 14, 20);
     ctx.font      = "14px Segoe UI, sans-serif";
     ctx.fillText(confLine2, 14, 40);
 
-    // graph SVG
+    // graph SVG home
     try {
       const graphImg = await toDataUrl(svgEl);
       ctx.drawImage(graphImg, 0, CONF_H, graphW, graphH);
-    } catch { /* skip if fails */ }
+    } catch {}
 
-    // legend SVG (top-right corner, aligned with graph top)
+    // SVG for the legend on the right
     if (legendSvgEl) {
       try {
         const legendImg = await toDataUrl(legendSvgEl);
@@ -295,11 +285,11 @@ document.getElementById("download-pdf-btn")?.addEventListener("click", async () 
 
     const imgData = canvas.toDataURL("image/png");
 
-    // title
+    // use module info span as PDF title if available
     const titleEl = document.querySelector("#module-info span");
     const title   = titleEl ? titleEl.textContent.trim() : (cleanId || "Module");
 
-    // PDF — scale canvas to fit A4 landscape
+    // scale canvas to fit A4 landscape without stretching
     const pdfW = 297, pdfH = 210;
     const pdf  = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
 
@@ -320,7 +310,6 @@ document.getElementById("download-pdf-btn")?.addEventListener("click", async () 
   });
 
 
-  // Handle input file
   if (uploadInput) uploadInput.addEventListener("change", async (evt) => {
     const file = evt.target.files[0];
     if (!file) return;
@@ -337,8 +326,7 @@ document.getElementById("download-pdf-btn")?.addEventListener("click", async () 
     }
   });
 
-
-  // Apply threshold button (if exists)
+  // The threshold button is applied again
   if (document.getElementById('applyBtn')) {
     document.getElementById('applyBtn').addEventListener('click', () => {
       const val = parseFloat(threshInput.value);
@@ -348,22 +336,18 @@ document.getElementById("download-pdf-btn")?.addEventListener("click", async () 
     });
   }
 
-  // Main search
+  // Main graph search buttons
   if (searchBtn) searchBtn.addEventListener("click", async () => {
     console.log("Search clicked");
     const moduleId = moduleInput.value.trim();
     if (moduleId.length !== 6) return alert("Module ID must be 6 chars e.g. M00001");
-    // persist threshold
     localStorage.setItem('moduleThreshold', threshold);
     // fetch modules
     const { nodesData: allNodesData, adjData: allAdjData } = await loadAllModules();
-
-    // keep uploaded sample json around for overlay / module list / etc
+    // currentSampleJson drives the modules overlay and other panels
     window.currentSampleJson = uploadedNodesData || allNodesData;
-
-    // 1) moduleBlock: prefer uploaded (it has Dk/Dk_Neighbor etc)
-    const moduleBlock =
-      (uploadedNodesData?.[moduleId]) || (allNodesData?.[moduleId]);
+    // uploaded JSON has the per-node stats; Oct27 file has the graph geometry
+    const moduleBlock = (uploadedNodesData?.[moduleId]) || (allNodesData?.[moduleId]);
     if (!moduleBlock) return alert(`Module ${moduleId} not found`);
 
     const moduleNodes = allNodesData?.[moduleId]?.nodes || allNodesData?.[moduleId];
@@ -372,31 +356,20 @@ document.getElementById("download-pdf-btn")?.addEventListener("click", async () 
       return alert(`Module ${moduleId} nodes not found in Oct 27 file`);
     }
 
-    // Always take links from Oct 27
+    /// links always come from the geometry file, not the upload
     const links = allAdjData?.[moduleId]?.links || allAdjData?.[moduleId];
-    if (!Array.isArray(links)) {
-      console.log("Adj shape debug:", allAdjData?.[moduleId]);
-      return alert(`Links for ${moduleId} not found in Oct 27 file`);
+    if (!Array.isArray(links)) { console.log("Adj shape debug:", allAdjData?.[moduleId]);
+      return alert(`Links for ${moduleId} not found in the geometry file.`);
     }
 
-    // 4) If uploaded has per-node stats, merge them onto Oct27 nodes
+    // merge per-node stats from upload onto the geometry nodes
     const overlayBlock = uploadedNodesData?.[moduleId] || null;
-
-    // KEEP Oct27 geometry nodes in moduleNodes
-    // Overlay values from uploaded nodes (suffix-agnostic)
     if (Array.isArray(uploadedNodesData)) {
-      const overlayByBase = new Map(
-        uploadedNodes
-          .map(n => [KO_BASE(KO_ID(n["KO id"] ?? n.id)), n])
-          .filter(([k]) => k)
-      );
+      const overlayByBase = new Map(uploadedNodes.map(n => [KO_BASE(KO_ID(n["KO id"] ?? n.id)), n]).filter(([k]) => k));
 
-      const FIELDS = [
-        "Dk","Dk_Neighbor","E-value","score","hit_conf",
-        "flag_is_below_kofam_threshold","is_outcompeted",
-        "kofam_score_threshold","buddy_stats","modules_present",
-        "target name","overlapgroup_winner","overlapgroup_winner_score",
-        "overlapgroup_winner_hit_conf","KO_freq","KO_Occurrence"
+      const FIELDS = ["Dk","Dk_Neighbor","E-value","score","hit_conf",
+        "flag_is_below_kofam_threshold","is_outcompeted","kofam_score_threshold","buddy_stats","modules_present",
+        "target name","overlapgroup_winner","overlapgroup_winner_score","overlapgroup_winner_hit_conf","KO_freq","KO_Occurrence"
       ];
 
       moduleNodes.forEach(n => {
@@ -408,15 +381,13 @@ document.getElementById("download-pdf-btn")?.addEventListener("click", async () 
           if (ov[k] !== undefined) n[k] = ov[k];
         }
 
-        // optional: if Oct27 node lacks "KO id", populate it
+        // backfill KO id if the geometry node is missing it
         if (n["KO id"] == null && ov["KO id"] != null) n["KO id"] = ov["KO id"];
       });
     }
 
-    // KEEP this
+
     moduleNodes.forEach(n => n["node-radius"] ??= 10);
-
-
     window.currentModuleId    = moduleId;
     window.currentModuleNodes = moduleNodes;
     window.currentModuleLinks = links;
@@ -425,21 +396,15 @@ document.getElementById("download-pdf-btn")?.addEventListener("click", async () 
     window.currentModuleJson  = moduleBlock;
     window.currentSampleJson   = uploadedNodesData || allNodesData;
     window.currentBestPath    = uploadedNodesData?.[moduleId]?.best_path || allNodesData[moduleId]?.best_path;
-    console.log("About to call renderGraph", {
-      moduleId: window.currentModuleId,
-      nodesLen: window.currentModuleNodes?.length,
-      linksLen: window.currentModuleLinks?.length,
-      hasModuleBlock: !!window.currentModuleJson,
-      bestPathType: typeof window.currentBestPath
-    });
-    console.log("Hi")
+    console.log("About to call renderGraph", {moduleId: window.currentModuleId,nodesLen: window.currentModuleNodes?.length,
+      linksLen: window.currentModuleLinks?.length,hasModuleBlock: !!window.currentModuleJson,bestPathType: typeof window.currentBestPath});
+    console.log("Debug 1.");
     console.log("CALL renderGraph nodes[0]:", moduleNodes?.[0]);
     console.log("CALL renderGraph links[0]:", links?.[0]);
-
-     renderGraph(moduleNodes, links, window.currentBestPath, moduleId);
+    renderGraph(moduleNodes, links, window.currentBestPath, moduleId);
   });
 
-  // Auto-search if URL has module param
+  // auto-search if the URL has a ?module= param (like when navigating from the overlay)
   const params = new URLSearchParams(window.location.search);
   const m = params.get('module');
   if (m) {
@@ -449,22 +414,17 @@ document.getElementById("download-pdf-btn")?.addEventListener("click", async () 
     searchBtn.click();
   }
 
-  function sanitizeJsonText(rawText) {
-  return rawText.replace(/\bNaN\b/g, "null").replace(/\bInfinity\b/g, "null");
-}
 
-  //EXAMPLE UPLOAD
+  // loads the bundled example file and renders the first module found in it
   const EXAMPLE_JSON_URL = "./Ver4__BLIMMP_modules.json"; 
   const exampleBtn = document.getElementById("load-example-btn");
 
   if (exampleBtn) exampleBtn.addEventListener("click", async () => {
     try {
-      // optional status UI
       const statusEl = document.getElementById("load-example-status");
       if (statusEl) statusEl.textContent = "Loading example…";
       revealSearch();
-
-      // Kick off nodes+adjacency fetch immediately, in parallel with example fetch
+      // Nodes+adjacency fetch can start in parallel with example fetch
       const modulesPromise = loadAllModules();
 
       const res = await fetch(EXAMPLE_JSON_URL, { cache: "no-store" });
@@ -492,10 +452,7 @@ document.getElementById("download-pdf-btn")?.addEventListener("click", async () 
         if (statusEl) statusEl.textContent = "Example loaded (no module found).";
         return alert("Example JSON loaded, but I couldn't find any Mxxxxx keys inside it.");
       }
-
       if (moduleInput) moduleInput.value = moduleId;
-
-      // Wait for nodes+adjacency (likely already done by now), then render directly
       if (statusEl) statusEl.textContent = "Fetching graph data…";
       const { nodesData: allNodesData, adjData: allAdjData } = await modulesPromise;
 
@@ -538,13 +495,9 @@ document.getElementById("download-pdf-btn")?.addEventListener("click", async () 
       alert("Failed to load example JSON (see console).");
     }
   });
-
-
-
-
 });
-
-// Optional: expose threshold to renderSections in module.html
+ 
+// used by module.html if it renders threshold-gated sections
 window.getModuleThreshold = () => threshold;
 
 
