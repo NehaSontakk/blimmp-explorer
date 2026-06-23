@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>BLIMMP - Module Viewer</title>
+  <title>BLIMMP: Module Viewer</title>
   <style>
     :root {
       --primary: #000000;
@@ -11,17 +11,32 @@
       --topbar: #c76040;
       --dark: #4f86c1;
       --radius: 4px;
-      --moduleinfo: #ffffff; 
-
+      --font: "Segoe UI", sans-serif;
+      --text: var(--primary);
+      --muted: rgba(0,0,0,0.65);
+      --moduleinfo: #ffffff;
     }
+    
     body {
-      font-family: "Segoe UI", sans-serif;
+      font-family: var(--font);
       margin: 0;
       padding: 0;
       background: var(--light);
-      color: var(--primary);
+      color: var(--text);
+      font-size: 16px;
+      line-height: 1.35;
       text-align: center;
     }
+    
+    .card,
+    #modules-overlay {
+      font-family: var(--font);
+      color: var(--text);
+      font-size: 16px;
+      line-height: 1.35;
+    }
+    
+    /* top black bar with logo and tool name */
     #header-container {
       display: flex;
       justify-content: space-between;
@@ -30,35 +45,33 @@
       color: var(--light);
       padding: 20px 40px;
     }
+    
     .header-text {
       display: flex;
       flex-direction: column;
       align-items: flex-start;
       text-align: left;
     }
+    
     .tool-name {
       margin: 0;
       font-size: 2.5rem;
       font-weight: bold;
     }
+    
     .tool-fullname {
       margin-top: 4px;
       font-size: 0.9rem;
       font-style: italic;
       opacity: 0.8;
     }
+    
     .logo {
       height: 80px;
       width: auto;
     }
-    #module-info {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;   
-  align-items: center;       
-  text-align: center;
-  background: var(--moduleinfo);
-  }
+    
+    /* colored subtitle strip below the header */
     #page-bar {
       background: var(--accent);
       color: var(--primary);
@@ -68,48 +81,48 @@
       font-weight: 600;
     }
 
+    /* upload + search controls, stacked vertically on a tan background */
+    #toolbar {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.6rem;
+      padding: 1rem;
+      background: #eeece4;
+      border-radius: 12px;
+      box-shadow: 0 6px 16px rgba(0,0,0,0.08);
+    }
+    
+    #toolbar .btn-primary,
+    #toolbar .file-upload {
+      width: 220px;
+      text-align: center;
+      box-sizing: border-box;
+    }
+    
+    #toolbar .file-upload .btn-primary {
+      width: 220px;
+      display: block;
+    }
+    
+    #toolbar-top-row {
+      display: flex;
+      flex-direction: row;
+      gap: 0.6rem;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    #search-row input.tool {
+      width: 220px;
+      box-sizing: border-box;
+    }
+    
+    #search-row .btn-primary {
+      width: 340px;
+    }
 
-
-  #toolbar {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.6rem;
-  padding: 1rem;
-  background: #eeece4;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-#toolbar .btn-primary,
-#toolbar .file-upload {
-  width: 220px;
-  text-align: center;
-  box-sizing: border-box;
-}
-
-#toolbar .file-upload .btn-primary {
-  width: 220px;
-  display: block;
-}
-
-#toolbar-top-row {
-  display: flex;
-  flex-direction: row;
-  gap: 0.6rem;
-  align-items: center;
-  justify-content: center;
-}
-
-#search-row input.tool {
-  width: 220px;
-  box-sizing: border-box;
-}
-
-#search-row .btn-primary {
-  width: 340px;
-}
-
-
+    /* shared input/button border style — accent color on focus */
     .tool {
       font-size: 1rem;
       border-radius: var(--radius);
@@ -117,29 +130,32 @@
       padding: 0.5rem 0.75rem;
       transition: border-color 0.2s ease;
     }
+    
     .tool:focus,
     .tool:hover {
       border-color: var(--accent);
       outline: none;
     }
-    /* Search box */
+    
     #moduleInput { width: 180px; }
-    /* Search button */
+    
     #searchBtn {
       background: var(--topbar);
       color: var(--primary);
-      
       border: none;
       cursor: pointer;
       font-weight: bold;
     }
+    
     #searchBtn:hover { background: var(--dark); }
-    /* File-upload styling */
+    
+    /* invisible file input sits on top of the styled button */
     .file-upload {
       position: relative;
       display: inline-block;
     }
-.file-upload .tool {
+    
+    .file-upload .tool {
       background: var(--primary);
       color: var(--light);
       font-weight: bold;
@@ -148,7 +164,9 @@
       font-size: 1rem !important;
       font-family: var(--font);
     }
+    
     .file-upload .tool:hover { background: var(--dark); }
+    
     .file-upload input[type="file"] {
       position: absolute;
       top: 0;
@@ -159,399 +177,375 @@
       cursor: pointer;
       z-index: 2;
     }
+    
+    #module-info {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      background: var(--moduleinfo);
+    }
+    
+    .card {
+      background: #fff;
+      border: 1px solid #e6e6e6;
+      border-radius: 12px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+      padding: 14px 16px;
+    }
+    
+    .btn-primary {
+      background: var(--primary);
+      color: var(--light);
+      border: none;
+      cursor: pointer;
+      font-weight: 700;
+      border-radius: var(--radius);
+      padding: 0.5rem 0.75rem;
+      font-size: 1rem !important;
+      font-family: var(--font);
+      line-height: 1.35;
+      transition: background 0.15s ease, box-shadow 0.15s ease;
+      display: inline-block;
+      box-sizing: border-box;
+    }
+    
+    .btn-primary:hover { background: var(--dark); }
+    
+    .btn-primary:focus {
+      outline: none;
+      box-shadow: 0 0 0 2px rgba(0,0,0,0.15);
+    }
+    
+    #graph-container svg {
+      background: white;
+      display: block;
+      margin: 16px auto 0;
+    }
+    
+    #graph-container,
+    #graph-container svg {
+      overflow: visible;
+      box-shadow: 0 6px 16px rgba(0,0,0,0.06);
+    }
+    
+    #graph-wrapper {
+      position: relative;
+    }
+    
+    #legend-overlay {
+      position: absolute;
+      top: 5px;
+      right: 0px;
+      pointer-events: auto;
+      z-index: 10;
+    }
+    
+    /* draggable detail panel, fixed left side so it doesn't cover the graph */
+    #influence-panel {
+      position: fixed;
+      top: 200px;
+      left: 20px;
+      right: auto;
+      width: 450px;
+      max-height: 100vh;
+      overflow: auto;
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.12);
+      padding: 12px;
+      z-index: 1000;
+      display: none;
+    }
+    
+    #influence-panel svg {
+      width: 100%;
+      height: 280px;
+      display: block;
+    }
+    
+    #influence-panel h3 {
+      margin: 0 0 8px 0;
+      font-size: 1.05rem;
+    }
+    
+    #influence-panel .meta {
+      font-size: 0.85rem;
+      opacity: 0.8;
+      margin-bottom: 8px;
+    }
+    
+    /* full-screen modal for browsing all modules in the uploaded JSON */
+    #modules-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      font-family: "Segoe UI", sans-serif;
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    
+    #modules-overlay.hidden {
+      display: none;
+    }
+    
+    #modules-overlay .overlay-backdrop {
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.35);
+    }
 
-    #graph-container svg {background: white; display: block; margin: 16px auto 0; }
-    #graph-container, #graph-container svg { overflow: visible; }
-#influence-panel {
-  position: fixed;
-  top: 200px;
-  left: 20px;        
-  right: auto;    
-  width: 450px;
-  max-height: 100vh;
-  overflow: auto;
-  background: white;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.12);
-  padding: 12px;
-  z-index: 1000;
-  display: none;
-}
-#influence-panel svg { width: 100%; height: 280px; display: block; }
-#influence-panel h3 {
-  margin: 0 0 8px 0;
-  font-size: 1.05rem;
-}
-#influence-panel .meta {
-  font-size: 0.85rem;
-  opacity: 0.8;
-  margin-bottom: 8px;
-}
-/* ===== Modules overlay ===== */
-/* =============== Modules Overlay =============== */
-#modules-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 9999;
-  font-family: "Segoe UI", sans-serif;
-  color: var(--primary);
-
-  /* center the card */
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  /* give breathing room so it never touches screen edges */
-  padding: 24px;
-}
-
-#modules-overlay.hidden {
-  display: none;
-}
-
-#modules-overlay .overlay-backdrop {
-  position: absolute;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.35);
-}
-
-/* Card: fixed within viewport + internal scrolling body */
-#modules-overlay .overlay-card {
-  position: relative;
-  z-index: 1;
-
-  width: min(1100px, 100%);
-  max-height: calc(100vh - 48px);
-
-  display: flex;
-  flex-direction: column;
-
-  background: #fff;
-  border: 1px solid rgba(0,0,0,0.12);
-  border-radius: 12px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.18);
-
-  overflow: hidden; /* keep scroll in overlay-body */
-}
-
-/* Header */
-#modules-overlay .overlay-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-
-  padding: 14px 16px;
-  background: #eeece4;
-  border-bottom: 1px solid #ddd;
-
-  flex: 0 0 auto;
-}
-
-#modules-overlay .overlay-title {
-  font-size: 18px;
-  font-weight: 700;
-}
-
-#modules-overlay .overlay-subtitle {
-  font-size: 14px;
-  color: #333;
-  opacity: 0.85;
-  margin-top: 2px;
-}
-
-#modules-overlay-close {
-  border: 1px solid #ccc;
-  background: #f3f3f3;
-  color: var(--primary);
-  border-radius: 999px;
-  width: 32px;
-  height: 32px;
-  cursor: pointer;
-  font-weight: 800;
-  line-height: 1;
-}
-
-/* Controls */
-#modules-overlay .overlay-controls {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-
-  padding: 12px 16px;
-  border-bottom: 1px solid #eee;
-  background: #fafafa;
-
-  flex: 0 0 auto;
-}
-
-#modules-overlay .overlay-label {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  font-size: 12px;
-  color: var(--primary);
-}
-
-#modules-overlay .overlay-label input {
-  border: 1px solid var(--primary);
-  border-radius: var(--radius);
-  padding: 0.5rem 0.75rem;
-  font-size: 14px;
-  color: var(--primary);
-}
-
-#modules-overlay-refresh {
-  align-self: end;
-  background: var(--primary);
-  color: var(--light);
-  border: none;
-  cursor: pointer;
-  font-weight: 700;
-  border-radius: var(--radius);
-  padding: 0.5rem 0.75rem;
-}
-
-#modules-overlay-refresh:hover {
-  background: var(--dark);
-}
-
-/* Scrollable body (this prevents bottom cut-off) */
-#modules-overlay .overlay-body {
-  flex: 1 1 auto;
-  min-height: 0;                 /* REQUIRED for flex scroll */
-  overflow-y: auto;
-  overscroll-behavior: contain;
-
-  padding: 12px 16px 20px;       /* left/right padding + bottom breathing room */
-}
-
-/* Modules list layout */
-#modules-overlay .modules-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 10px;
-}
-
-/* KEGG category heading */
-#modules-overlay .modules-overlay-category {
-  color: var(--topbar);
-  font-weight: 700;
-  font-size: 14px;
-  margin: 12px 0 6px;
-  border-bottom: 1px solid rgba(0,0,0,0.15);
-  padding-bottom: 4px;
-}
-
-/* Module chips */
-#modules-overlay .module-chip {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 10px;
-
-  padding: 10px 12px;
-  border: 1px solid #e4e4e4;
-  border-radius: 10px;
-  background: #fff;
-  cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease;
-}
-
-#modules-overlay .module-chip:hover {
-  border-color: #aaa;
-  background: #fcfcfc;
-}
-
-#modules-overlay .module-chip code {
-  color: var(--accent);
-  font-weight: 700;
-  font-size: 14px;
-  font-family: "Segoe UI", sans-serif;
-  font-variant-numeric: normal;
-}
-
-#modules-overlay .module-chip:hover code {
-  text-decoration: underline;
-}
-
-#modules-overlay .module-chip .p {
-  font-size: 14px;
-  color: #333;
-}
-
-.module-chip .module-desc{
-  margin-top: 4px;
-  font-size: 12px;
-  line-height: 1.1;
-  color: #666;
-  max-width: 180px;   
-  white-space: wrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-
-
-.btn-primary {
-  background: var(--primary);
-  color: var(--light);
-  border: none;
-  cursor: pointer;
-  font-weight: 700;
-  border-radius: var(--radius);
-  padding: 0.5rem 0.75rem;
-  font-size: 1rem !important;
-  font-family: var(--font);
-  line-height: 1.35;
-  transition: background 0.15s ease, box-shadow 0.15s ease;
-  display: inline-block;
-  box-sizing: border-box;
-}
-
-.btn-primary:hover {
-  background: var(--dark);
-}
-
-.btn-primary:focus {
-  outline: none;
-  box-shadow: 0 0 0 2px rgba(0,0,0,0.15);
-}
-
-/* ===== Shared card style (matches overlay-card) ===== */
-.card {
-  background: #fff;
-  border: 1px solid #e6e6e6;
-  border-radius: 12px;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.08);
-  padding: 14px 16px;
-}
-
-#graph-container {
-  box-shadow: 0 6px 16px rgba(0,0,0,0.06);
-}
-#toolbar {
-  border-radius: 12px;
-  box-shadow: 0 6px 16px rgba(0,0,0,0.08);
-}
-
-:root {
-  --font: "Segoe UI", sans-serif;
-  --text: var(--primary);
-  --muted: rgba(0,0,0,0.65);
-}
-
-body {
-  font-family: var(--font);
-  color: var(--text);
-  font-size: 16px;        
-  line-height: 1.35;
-}
-
-.card,
-#modules-overlay {
-  font-family: var(--font);
-  color: var(--text);
-  font-size: 16px;
-  line-height: 1.35;
-}
-
-#graph-wrapper {
-  position: relative;
-}
-
-#legend-overlay {
-  position: absolute;
-  top: 5px;
-  right: 0px;
-  pointer-events: auto;  
-  z-index: 10;         
-}
-
-#graph-container svg.flag-dim g.nodes g.node {
-  opacity: 0.18;
-}
-
-#graph-container svg.flag-dim g.nodes g.node.flag-hit {
-  opacity: 1;
-  filter: drop-shadow(0px 0px 7px rgba(255, 140, 0, 0.85));
-}
-
-#graph-container svg.flag-dim g.nodes g.node.flag-hit text {
-  font-weight: 700;
-}
-
-#graph-container svg.flag-dim g.nodes g.node.flag-hit .flag-outline {
-  stroke-width: 4;
-}
-#graph-container svg.flag-dim-edges g.links path {
-  opacity: 0.08;
-  transition: opacity 0.15s ease;
-}
-
-.legend-flag-row rect.legend-hitbox {
-  fill: transparent;
-}
-
-.legend-flag-row:hover rect.legend-hitbox {
-  fill: rgba(0,0,0,0.05);
-}
-
-.legend-flag-row.is-active rect.legend-hitbox {
-  fill: rgba(0,0,0,0.10);
-  stroke: rgba(0,0,0,0.25);
-  stroke-width: 1;
-}
-
-#graph-container .bestpath-dim g.links path:not(.bestpath-hit) {
-  opacity: 0.08;
-  transition: opacity 0.15s ease;
-}
-#graph-container .bestpath-dim g.links path.bestpath-hit {
-  stroke: #d11 !important;
-  stroke-width: 4px !important;
-  opacity: 1 !important;
-  transition: stroke-width 0.15s ease, opacity 0.15s ease;
-}
-
-.legend-bestpath-row.is-active rect {
-  fill: rgba(221, 17, 17, 0.12) !important;
-}
-
-.module-dropdown-item {
-  padding: 8px 12px;
-  cursor: pointer;
-  border-bottom: 1px solid #f0f0f0;
-  line-height: 1.3;
-}
-.module-dropdown-item:last-child {
-  border-bottom: none;
-}
-.module-dropdown-item:hover,
-.module-dropdown-item.active {
-  background: #f0f4f8;
-}
-.module-dropdown-item .mid {
-  font-weight: 700;
-  color: var(--accent);
-  margin-right: 6px;
-}
-.module-dropdown-item .mdesc {
-  color: #333;
-}
-.module-dropdown-item .mcat {
-  font-size: 11px;
-  color: #888;
-  margin-top: 2px;
-}
-.match-highlight {
-  background: #fff3b0;
-  border-radius: 2px;
-}
+    /* card is flex column so the body can scroll independently of header and controls */
+    #modules-overlay .overlay-card {
+      position: relative;
+      z-index: 1;
+      width: min(1100px, 100%);
+      max-height: calc(100vh - 48px);
+      display: flex;
+      flex-direction: column;
+      background: #fff;
+      border: 1px solid rgba(0,0,0,0.12);
+      border-radius: 12px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.18);
+      overflow: hidden;
+    }
+    
+    #modules-overlay .overlay-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px 16px;
+      background: #eeece4;
+      border-bottom: 1px solid #ddd;
+      flex: 0 0 auto;
+    }
+    
+    #modules-overlay .overlay-title {
+      font-size: 18px;
+      font-weight: 700;
+    }
+    
+    #modules-overlay .overlay-subtitle {
+      font-size: 14px;
+      color: #333;
+      opacity: 0.85;
+      margin-top: 2px;
+    }
+    
+    #modules-overlay-close {
+      border: 1px solid #ccc;
+      background: #f3f3f3;
+      color: var(--primary);
+      border-radius: 999px;
+      width: 32px;
+      height: 32px;
+      cursor: pointer;
+      font-weight: 800;
+      line-height: 1;
+    }
+    
+    #modules-overlay .overlay-controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      padding: 12px 16px;
+      border-bottom: 1px solid #eee;
+      background: #fafafa;
+      flex: 0 0 auto;
+    }
+    
+    #modules-overlay .overlay-label {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--primary);
+    }
+    
+    #modules-overlay .overlay-label input {
+      border: 1px solid var(--primary);
+      border-radius: var(--radius);
+      padding: 0.5rem 0.75rem;
+      font-size: 14px;
+      color: var(--primary);
+    }
+    
+    #modules-overlay-refresh {
+      align-self: end;
+      background: var(--primary);
+      color: var(--light);
+      border: none;
+      cursor: pointer;
+      font-weight: 700;
+      border-radius: var(--radius);
+      padding: 0.5rem 0.75rem;
+    }
+    
+    #modules-overlay-refresh:hover { background: var(--dark); }
+    
+ 
+    /* min-height:0 is what actually enables flex scroll here */
+    #modules-overlay .overlay-body {
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      padding: 12px 16px 20px;
+    }
+    
+    #modules-overlay .modules-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 10px;
+    }
+    
+    #modules-overlay .modules-overlay-category {
+      color: var(--topbar);
+      font-weight: 700;
+      font-size: 14px;
+      margin: 12px 0 6px;
+      border-bottom: 1px solid rgba(0,0,0,0.15);
+      padding-bottom: 4px;
+    }
+    
+    #modules-overlay .module-chip {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 10px 12px;
+      border: 1px solid #e4e4e4;
+      border-radius: 10px;
+      background: #fff;
+      cursor: pointer;
+      transition: background 0.15s ease, border-color 0.15s ease;
+    }
+    
+    #modules-overlay .module-chip:hover {
+      border-color: #aaa;
+      background: #fcfcfc;
+    }
+    
+    #modules-overlay .module-chip code {
+      color: var(--accent);
+      font-weight: 700;
+      font-size: 14px;
+      font-family: "Segoe UI", sans-serif;
+      font-variant-numeric: normal;
+    }
+    
+    #modules-overlay .module-chip:hover code { text-decoration: underline; }
+    
+    #modules-overlay .module-chip .p {
+      font-size: 14px;
+      color: #333;
+    }
+    
+    .module-chip .module-desc {
+      margin-top: 4px;
+      font-size: 12px;
+      line-height: 1.1;
+      color: #666;
+      max-width: 180px;
+      white-space: wrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    
+    /* when a flag filter is active, dim everything first, then re-brighten hits below */
+    #graph-container svg.flag-dim g.nodes g.node {
+      opacity: 0.18;
+    }
+    
+    #graph-container svg.flag-dim g.nodes g.node.flag-hit {
+      opacity: 1;
+      filter: drop-shadow(0px 0px 7px rgba(255, 140, 0, 0.85));
+    }
+    
+    #graph-container svg.flag-dim g.nodes g.node.flag-hit text {
+      font-weight: 700;
+    }
+    
+    #graph-container svg.flag-dim g.nodes g.node.flag-hit .flag-outline {
+      stroke-width: 4;
+    }
+    
+    #graph-container svg.flag-dim-edges g.links path {
+      opacity: 0.08;
+      transition: opacity 0.15s ease;
+    }
+    
+    .legend-flag-row rect.legend-hitbox { fill: transparent; }
+    
+    .legend-flag-row:hover rect.legend-hitbox { fill: rgba(0,0,0,0.05); }
+    
+    /* locked highlight — user clicked to pin, not just hovering */
+    .legend-flag-row.is-active rect.legend-hitbox {
+      fill: rgba(0,0,0,0.10);
+      stroke: rgba(0,0,0,0.25);
+      stroke-width: 1;
+    }
+    
+    #graph-container .bestpath-dim g.links path:not(.bestpath-hit) {
+      opacity: 0.08;
+      transition: opacity 0.15s ease;
+    }
+    
+    /* best path edges get a red override when highlight is on */
+    #graph-container .bestpath-dim g.links path.bestpath-hit {
+      stroke: #d11 !important;
+      stroke-width: 4px !important;
+      opacity: 1 !important;
+      transition: stroke-width 0.15s ease, opacity 0.15s ease;
+    }
+    
+    .legend-bestpath-row.is-active rect { fill: rgba(221, 17, 17, 0.12) !important; }
+    
+    /* autocomplete rows in the module search box */
+    .module-dropdown-item {
+      padding: 8px 12px;
+      cursor: pointer;
+      border-bottom: 1px solid #f0f0f0;
+      line-height: 1.3;
+    }
+    
+    .module-dropdown-item:last-child { border-bottom: none; }
+    
+    .module-dropdown-item:hover,
+    .module-dropdown-item.active {
+      background: #f0f4f8;
+    }
+    
+    .module-dropdown-item .mid {
+      font-weight: 700;
+      color: var(--accent);
+      margin-right: 6px;
+    }
+    
+    .module-dropdown-item .mdesc { color: #333; }
+    
+    .module-dropdown-item .mcat {
+      font-size: 11px;
+      color: #888;
+      margin-top: 2px;
+    }
+    
+    /* yellow highlight on the matching substring in dropdown results */
+    .match-highlight {
+      background: #fff3b0;
+      border-radius: 2px;
+    }
 
 
   </style>
+
+  
 </head>
 <body>
   <div id="header-container">
@@ -642,7 +636,7 @@ body {
       <!-- Range threshold -->
       <div class="overlay-label" style="display:flex; flex-direction:column; gap:6px;">
         <div>Confidence range (module_probability_after)</div>
-
+        <button onclick="downloadLegendAsPNG(3)">Save legend PNG (3×)</button>
         <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
           <label style="display:flex; align-items:center; gap:6px;">
             <span style="color:#555;">Min</span>
@@ -692,6 +686,7 @@ body {
     </div>
 
     <div id="modules-overlay-body" class="overlay-body"></div>
+   
   </div>
 </div>
 
