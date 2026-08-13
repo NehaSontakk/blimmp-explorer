@@ -12,11 +12,10 @@ const TOP_OFFSET = 10;
 
 //Added Sep 4
 window.nodeByBase = new Map();
-window.koIndex = new Map();   // KO_BASE -> node object from uploaded JSON
+window.koIndex = new Map();   
 
 
 // Use new "KO id" when present, else fallback to old .id
-// Prefer "KO id" first, fallback to old .id
 const NODE_ID = (n) => n?.["KO id"] ?? n?.id;
 
 
@@ -33,9 +32,9 @@ const keggRxnLink = (rxn) =>`https://www.kegg.jp/dbget-bin/www_bget?rn:${rxn}`;
 
 
 
-
-// Load BLIMMP module JSON globally (contains "steps" per module)
-const MODULE_DATA_URL = "./KEGG_Module_Equations_Jan26.json";
+// Load BLIMMP module JSON globally
+const MODULE_DATA_URL =
+  "https://raw.githubusercontent.com/NehaSontakk/Graph-Viz/refs/heads/main/KEGG_Module_Equations_Jan26.json";
 
 window.moduleData = {};
 
@@ -63,7 +62,7 @@ function escapeHtml(s) {
 }
 
 function linkifyKOsToKegg(text) {
-  // Convert K00001 -> <a ...>K00001</a>
+  // Convert K00001 to <a ...>K00001</a>
   // Works inside arbitrary text (equations, lists, etc.)
   const safe = escapeHtml(text);
   return safe.replace(/\bK\d{5}\b/g, (ko) => {
@@ -91,7 +90,7 @@ tooltip
   .on('mouseenter', () => {
     if (tooltipHideTimer) clearTimeout(tooltipHideTimer);
     tooltipHideTimer = null;
-    tooltip.interrupt();              // stop any fade-out in progress
+    tooltip.interrupt();              
     tooltip.style('opacity', 0.98);
   })
   .on('mouseleave', () => {
@@ -103,7 +102,7 @@ tooltip
 
 
 // Metadata for modules
-const metaURL = 'https://raw.githubusercontent.com/NehaSontakk/Graph-Viz/refs/heads/main/kegg_bacteria_modules.json';
+const metaURL = './kegg_bacteria_modules.json';
 let moduleMetaData = null;
 let moduleToCategory = new Map();
 
@@ -159,7 +158,7 @@ function moveTooltipToEvent(evt, offsetX = 10, offsetY = 12) {
     const legendRight = lr.right + scrollX;
     const legendTop   = lr.top   + scrollY;
 
-    // Legend is on the right side — if tooltip would overlap it, push left
+    // Legend is on the right side if tooltip would overlap it, push left
     const wouldOverlapX = (left + ttW) > legendLeft && left < legendRight;
     const wouldOverlapY = (top + ttH) > legendTop;
 
@@ -300,7 +299,6 @@ function extractAllModulesWithAfter(rawSampleJson) {
   // Returns [{id, after, before, eqn}, ...] from a dict { M00017: {...}, ... }
   if (!rawSampleJson || typeof rawSampleJson !== 'object') return [];
 
-  // If the sample JSON is actually one module block, no global list is possible:
   if ('module_probability_after' in rawSampleJson && !rawSampleJson.M00001) {
     return [];
   }
@@ -341,7 +339,6 @@ function openModulesOverlayWhenReady({ retries = 40, delayMs = 75 } = {}) {
     if (looksLikeModuleDict) {
       openModulesOverlay();
 
-      // metadata might finish loading later; re-render once or twice
       if (moduleMetaData === null) {
         setTimeout(renderModulesOverlayList, 250);
         setTimeout(renderModulesOverlayList, 900);
@@ -500,7 +497,6 @@ window.addEventListener("DOMContentLoaded", () => {
   });
 
   document.getElementById("nodeJsonUpload")?.addEventListener("change", () => {
-    // Wait until your upload handler finishes setting window.currentSampleJson
     openModulesOverlayWhenReady();
   });
 
@@ -520,8 +516,8 @@ window.addEventListener("DOMContentLoaded", () => {
 function buildStepMapFromModule(moduleId) {
   const steps = getFlatStepsForModule(moduleId);
 
-  // KO -> queue of step placements
-  const qmap = new Map(); // ko -> [{stepKey,line,step}, ...]
+  // KO to queue of step placements
+  const qmap = new Map(); // ko to [{stepKey,line,step}, ...]
 
   for (const s of steps) {
     const lineNo = +s.line || 1;
@@ -534,8 +530,7 @@ function buildStepMapFromModule(moduleId) {
 
     const stepKey = `L${lineNo}:S${stepNo}`;
 
-    // IMPORTANT: do NOT dedupe with Set() — keep multiplicity across steps
-    // but within the SAME step, you can dedupe to avoid double counting
+    // within the SAME step can dedupe to avoid double counting
     const uniqInThisStep = [...new Set(matches)];
 
     for (const ko of uniqInThisStep) {
@@ -547,11 +542,11 @@ function buildStepMapFromModule(moduleId) {
   // convert lists to queues
   const out = new Map();
   for (const [ko, arr] of qmap.entries()) {
-    // stable ordering: line then step
+    // stable ordering line then step
     arr.sort((a,b)=> (a.line-b.line) || (a.step-b.step));
     out.set(ko, arr);
   }
-  return out; // KO -> array of placements
+  return out; 
 }
 
 
@@ -567,7 +562,6 @@ function getSvgDims() {
 }
 
 
-// Put this OUTSIDE renderGraph (top-level in the module)
 let _resizeHandlerInstalled = false;
 
 function installResizeHandlerOnce() {
@@ -586,8 +580,6 @@ function installResizeHandlerOnce() {
 
 function buildBestPathKoSet(moduleBlock, moduleId) {
   const set = new Set();
-
-  // 1) Prefer the uploaded module block's top-level best_path (your sample)
   const bp = moduleBlock?.best_path;
   const arr1 =
     Array.isArray(bp) ? bp :
@@ -596,12 +588,15 @@ function buildBestPathKoSet(moduleBlock, moduleId) {
       .map(s => s.trim())
       .filter(Boolean);
 
+  console.log("best_path raw:", bp);
+  console.log("best_path arr1:", arr1);
+
   for (const ko of arr1) {
     const base = KO_BASE(KO_ID(ko));
     if (base && base !== "START" && base !== "SINK") set.add(base);
   }
 
-  // 2) Fallback: step-level best_path_kos (your equations JSON)
+  // 2) step-level best_path_kos
   if (set.size === 0) {
     const steps = getFlatStepsForModule(moduleId);
     for (const s of steps) {
@@ -651,7 +646,7 @@ export function renderGraph(rawNodes, rawLinks, bestPath, moduleId) {
   const koUseCount = new Map();
   const overlay = window.currentOverlayBlock || null;
 
-  // build baseKO -> overlayNode map (suffix-agnostic)
+  // build baseKO to overlayNode map (suffix-agnostic)
   const overlayByBase = new Map();
   if (overlay && Array.isArray(overlay.nodes)) {
     for (const on of overlay.nodes) {
@@ -695,7 +690,7 @@ export function renderGraph(rawNodes, rawLinks, bestPath, moduleId) {
       : (rawMod && rawMod[moduleId]) ? rawMod[moduleId] : null;
 
 
-      // Prefer per-sample module block (has p_before/p_after), fallback to moduleData (equations only)
+      // Prefer per-sample module block (has p_before/p_after) fallback to moduleData (equations only)
     function flatStepsFromBlock(block) {
       if (!block || typeof block !== "object") return [];
 
@@ -737,7 +732,7 @@ export function renderGraph(rawNodes, rawLinks, bestPath, moduleId) {
     const stepInfoSource = (() => {
       const fromBlock = flatStepsFromBlock(moduleBlock);
       if (fromBlock.length) return fromBlock;
-      return getFlatStepsForModule(moduleId); // your existing function (equations JSON)
+      return getFlatStepsForModule(moduleId); 
     })();
 
     const stepInfoByKey = new Map(
@@ -745,6 +740,8 @@ export function renderGraph(rawNodes, rawLinks, bestPath, moduleId) {
         .filter(s => Number.isFinite(+s.step))
         .map(s => [`L${(+s.line || 1)}:S${+s.step}`, s])
     );
+
+    for (const [key, stepDatum] of stepInfoByKey.entries()) {console.log("step:", key, "best_path_kos:", stepDatum.best_path_kos);}
 
   rebuildKoIndexFromCurrentSampleJson()
 
@@ -756,7 +753,7 @@ export function renderGraph(rawNodes, rawLinks, bestPath, moduleId) {
 
   // Allow drawing outside the svg’s content box
   root.style('overflow', 'visible');                       // container
-  const VB_BLEED_TOP = 50;   // increase if you still can’t see the \ top
+  const VB_BLEED_TOP = 50;   // increase if you still can’t see the top
   const VB_BLEED_LEFT = 60;
   const VB_BLEED_RIGHT = 60;
   const VB_BLEED_BOTTOM = 40;
@@ -807,7 +804,7 @@ defs.append('marker')
   const occExtent = d3.extent(rawNodes, d => d.KO_freq ?? d.KO_Occurrence ?? 0);
 
   window.sharedScales = {
-    rScale: d3.scaleLinear().domain(occExtent).range([5,20]),
+    rScale: d3.scaleLinear().domain(occExtent).range([8,32]),
     dkScale: d3.scaleSequential(d3.interpolateReds).domain([0,1]),
     evScale: d3.scaleSequential()
                 .domain([-50, 0])                     // log10(E)
@@ -824,7 +821,6 @@ defs.append('marker')
   currentNodes = layout.nodes;
   currentLinks = layout.links;
 
-  // Call immediately, then retry once metadata finishes loading if it wasn't ready
   displayModuleInfo(moduleId);
   if (!moduleMetaData) {
     const retryId = moduleId;
@@ -864,7 +860,7 @@ defs.append('marker')
     .forEach(n => console.log("NODE", NODE_ID(n), "x,y", n.x, n.y, "stepKey", n.stepKey));
 
 
-// --- after you assign n.stepKey, n.stepLine, n.stepNo ---
+// after you assign n.stepKey, n.stepLine, n.stepNo
 // Use Dagre layout Y; step lines are drawn slightly BELOW the lowest node in each stepKey
 const nodesWithStep = layout.nodes.filter(n => Number.isFinite(n.y) && n.stepKey);
 
@@ -894,7 +890,7 @@ const xExtentByStepKey = d3.rollup(
 );
 
 
-// stable order (your existing sort)
+// stable order (existing sort)
 const stepKeys = Array.from(yMaxByStepKey.keys()).sort((a,b) => {
   const ma = a.match(/L(\d+):S(\d+)/), mb = b.match(/L(\d+):S(\d+)/);
   if (!ma || !mb) return String(a).localeCompare(String(b));
@@ -905,7 +901,7 @@ const stepKeys = Array.from(yMaxByStepKey.keys()).sort((a,b) => {
 
 // Group nodes by step
 
-// NEW: detect multiline
+// detect multiline
 const stepLinesG = svg.insert('g', ':first-child')
   .attr('class', 'step-lines')
   .attr('pointer-events', 'all');
@@ -1022,11 +1018,11 @@ stepKeys.forEach(key => {
 
 const bestX = isMultiline ? Math.min(SVG_W - 6, x2 + 8) : BEST_X;
 const bestAnchor = isMultiline ? "start" : "start"; // (or "start" always)
-// ---- Best-path KOs as a vertical list ABOVE the step line ----
+//  Best-path KOs as a vertical list ABOVE the step line 
 const koX = isMultiline ? (x2 + 50) : (x2 + 50);   // anchor near end of line
 const koAnchor = "end";
-const koFont = 11;
-const koLineH = 12;         // line height in px
+const koFont = 26;
+const koLineH = 32;         // line height in px
 const koGapAboveLine = 6;   // space between last KO and the dashed line
 
 const showBestTip = (event) => {
@@ -1042,7 +1038,6 @@ const showBestTip = (event) => {
 
 const hideBestTip = () => tooltip.transition().duration(250).style("opacity", 0);
 
-// limit how many lines you print so it doesn't explode tall
 const maxLines = 6;
 const kosToShow = bestKosArr.slice(0, maxLines);
 const more = bestKosArr.length - kosToShow.length;
@@ -1050,7 +1045,7 @@ const more = bestKosArr.length - kosToShow.length;
 if (kosToShow.length) {
   const text = stepLinesG.append("text")
     .attr("x", koX*2)
-    // place the *last* line just above the step line, then tspans go upward
+    // place the line just above the step line, then tspans go upward
     .attr("y", yLine - koGapAboveLine - (kosToShow.length - 1) * koLineH)
     .attr("text-anchor", koAnchor)
     .attr("font-size", koFont)
@@ -1094,7 +1089,7 @@ const labelText = isMultiline ? `L${lineNo}` : `Step ${stepNo ?? "—"}`;
     .attr('x', labelX)
     .attr('y', yLine - 6)
     .attr('text-anchor', 'start')
-    .attr('font-size', 15)
+    .attr('font-size', 35)
     .attr('fill', '#333435ff')
     .style('cursor', 'help')
     .text(`${labelText} ⓘ`)
@@ -1104,9 +1099,9 @@ const labelText = isMultiline ? `L${lineNo}` : `Step ${stepNo ?? "—"}`;
   // p_before/p_after visible right on the plot
   stepLinesG.append('text')
     .attr('x', labelX)
-    .attr('y', yLine + 12)
+    .attr('y', yLine + 22)
     .attr('text-anchor', 'start')
-    .attr('font-size', 12)
+    .attr('font-size', 22)
     .attr('fill', '#555')
     .text(`p_before: ${fmtP3(pB)} • p_after: ${fmtP3(pA)}`);});
 
@@ -1255,7 +1250,7 @@ function log10EForColor(ev, floorLog10 = -50) {
     return floorLog10;
   }
 
-  // Optional: treat your sentinel 100.0 as NA grey
+  // treat your sentinel 100.0 as NA grey
   if (x === 100.0) {
     return null;
   }
@@ -1265,7 +1260,35 @@ function log10EForColor(ev, floorLog10 = -50) {
   return Math.log10(x);
 }
 
+function downloadLegendAsPNG(scale = 3) {
+  const legendSvg = document.querySelector("#legend-overlay svg");
+  if (!legendSvg) return;
 
+  const svgW = legendSvg.width.baseVal.value || 360;
+  const svgH = legendSvg.height.baseVal.value || 400;
+
+  const serializer = new XMLSerializer();
+  const svgStr = serializer.serializeToString(legendSvg);
+  const blob = new Blob([svgStr], { type: "image/svg+xml" });
+  const url = URL.createObjectURL(blob);
+
+  const img = new Image();
+  img.onload = () => {
+    const canvas = document.createElement("canvas");
+    canvas.width  = svgW * scale;
+    canvas.height = svgH * scale;
+    const ctx = canvas.getContext("2d");
+    ctx.scale(scale, scale);
+    ctx.drawImage(img, 0, 0);
+    URL.revokeObjectURL(url);
+
+    const a = document.createElement("a");
+    a.href = canvas.toDataURL("image/png");
+    a.download = "legend.png";
+    a.click();
+  };
+  img.src = url;
+}
 
 function plotNodes(nodes, svg) {
   window.nodeById = new Map();
@@ -1291,7 +1314,6 @@ function plotNodes(nodes, svg) {
       const r = rScale(d.KO_freq ?? d.KO_Occurrence ?? 0);
       const fullId = KO_ID(NODE_ID(d));     // e.g., K01601_3
       const baseId = KO_BASE(fullId);       // e.g., K01601
-
       // 1) Full-id map (unique per node)
       window.nodeById = window.nodeById || new Map();
       window.nodeById.set(fullId, d);
@@ -1356,13 +1378,13 @@ function plotNodes(nodes, svg) {
       g.append('text')
         .text(baseId === "SINK" ? "END" : baseId)
         .attr('text-anchor', 'middle')
-        .attr('y', r + 14)
-        .attr('font-size', '12px')
+        .attr('y', r + 30)
+        .attr('font-size', '30px')
         .attr('fill', '#000')
         .attr('pointer-events', 'none');
 
 
-      // --- Visual flags for dubious / outcompeted KOs ---
+      // Visual flags for dubious / outcompeted KOs 
       const flagged = (d.is_outcompeted === true) || (d.flag_is_below_kofam_threshold === true);
 
       // Red outline if either flag is true
@@ -1380,27 +1402,27 @@ function plotNodes(nodes, svg) {
         // show “?” for outcompeted only
         g.append('text')
           .text('?')
-          .attr('x', -(r + 8))          // small offset above circle
+          .attr('x', -(r + 10))          // small offset above circle
           .attr('text-anchor', 'middle')
-          .attr('font-size', '22px')
+          .attr('font-size', '34px')
           .attr('font-weight', 'bold')
           .attr('fill', '#ff7f50');
       } else if (d.is_outcompeted === false && d.flag_is_below_kofam_threshold === true) {
         // show “!” for below-KOfam only
         g.append('text')
           .text('!')
-          .attr('x', -(r + 8))
+          .attr('x', -(r + 10))
           .attr('text-anchor', 'middle')
-          .attr('font-size', '22px')
+          .attr('font-size', '34px')
           .attr('font-weight', 'bold')
           .attr('fill', '#DD4400');
       } else if (d.is_outcompeted === true && d.flag_is_below_kofam_threshold === true) {
         // show “x” for below-KOfam only
         g.append('text')
           .text('x')
-          .attr('x', -(r + 8))
+          .attr('x', -(r + 10))
           .attr('text-anchor', 'middle')
-          .attr('font-size', '15px')
+          .attr('font-size', '26px')
           .attr('font-weight', 'bold')
           .attr('fill', '#DD4400');
       }
@@ -1424,7 +1446,7 @@ function plotNodes(nodes, svg) {
         const Oi = d.hit_conf;  
         const ev     = d['E-value'];
         const score = d['score'];                     
-        const Fi = d.KO_freq;
+        const Fi = d.KO_freq ?? d.KO_Occurrence;
         const ORF = d['target name'];
 
         const dkp    = d.Dk_Neighbor;
@@ -1436,7 +1458,6 @@ function plotNodes(nodes, svg) {
         const ogws   = normNum(d.overlapgroup_winner_score, null);
         const kofThr = normNum(d.kofam_score_threshold, null);
 
-        // prefer your stored shift if present (this matches panel’s “+ shift”)
         const shift =
           (d?.buddy_stats && Number.isFinite(+d.buddy_stats.shift))
             ? +d.buddy_stats.shift
@@ -1735,13 +1756,13 @@ function addLegends(svg, SVG_W, { inLegendRow = false } = {}) {
   const legendY = 20;
 
 
-  const barW = 140;   // horizontal width
-  const barH = 14;    // thin bar
+  const barW = 200;   // horizontal width
+  const barH = 20;    // thin bar
   const spacingY = 36;
 
   const defs = svg.append("defs");
 
-  // ===== SCALES (must match plotNodes) =====
+  // SCALES (must match plotNodes)
   const dkScale = d3.scaleSequential()
     .domain([0, 1])
     .interpolator(d3.interpolateReds);
@@ -1751,7 +1772,7 @@ function addLegends(svg, SVG_W, { inLegendRow = false } = {}) {
     .interpolator(d3.interpolateRgb("#ff0000", "white"))
     .clamp(true);
 
-  // ===== GRADIENTS =====
+  // GRADIENTS
   defs.append("linearGradient")
     .attr("id", "dkGradientH")
     .attr("x1", "0%").attr("y1", "0%")
@@ -1779,7 +1800,7 @@ function addLegends(svg, SVG_W, { inLegendRow = false } = {}) {
     .attr("font-weight", 600)
     .text("Color Scales");
 
-  // ===== Dk (confidence) =====
+  // Dk (confidence)
   const dkY = 10;
 
   legend.append("text")
@@ -1801,7 +1822,7 @@ function addLegends(svg, SVG_W, { inLegendRow = false } = {}) {
     .call(d3.axisBottom(dkAxis).ticks(3))
     .selectAll("text").attr("font-size", 10);
 
-  // ===== E-value =====
+  // E-value
   const evY = dkY + barH + spacingY;
 
   legend.append("text")
@@ -1828,7 +1849,7 @@ function addLegends(svg, SVG_W, { inLegendRow = false } = {}) {
     .selectAll("text").attr("font-size", 10);
 
 
-  // ===== FLAGS =====
+  // FLAGS
   const flagsY = evY + barH + spacingY;
 
   legend.append("text")
@@ -1876,7 +1897,7 @@ function addLegends(svg, SVG_W, { inLegendRow = false } = {}) {
     .attr("fill", "#333")
     .text(r.label);
 
-  // --- behavior: hover previews unless something is locked ---
+  // behavior: hover previews unless something is locked
   row.on("mouseenter", () => {
       if (window.activeFlagMode) return;   // keep locked highlight
       highlightFlagNodes(r.mode);
@@ -1899,7 +1920,7 @@ function addLegends(svg, SVG_W, { inLegendRow = false } = {}) {
     });
 });
 
-    // ===== SIZE LEGEND =====
+    // SIZE LEGEND
   const sizeY = flagsY + 16 + flagRows.length * 16 + 26;
 
   legend.append("text")
@@ -1908,7 +1929,7 @@ function addLegends(svg, SVG_W, { inLegendRow = false } = {}) {
     .attr("font-weight", 600)
     .text("KO size (frequency in ATB Data)");
 
-  const rScale = d3.scaleLinear().domain([0, 1]).range([5, 20]);
+  const rScale = d3.scaleLinear().domain([0, 1]).range([8, 32]);
   const sizeVals = [0, 0.5, 1.0];
 
   const sx = 18;
@@ -1933,7 +1954,7 @@ function addLegends(svg, SVG_W, { inLegendRow = false } = {}) {
       .text(v);
   });
 
-  // ===== EDGE LEGEND =====
+  // EDGE LEGEND
   const edgeY = sy + 70;
 
   legend.append("text")
@@ -1955,7 +1976,7 @@ function addLegends(svg, SVG_W, { inLegendRow = false } = {}) {
       .attr("x2", 60).attr("y2", y)
       .attr("stroke", "#666")
       .attr("stroke-width", e.w)
-      .attr("stroke-dasharray", e.dashed ? "8,3,2,3" : null); // your distinct dash
+      .attr("stroke-dasharray", e.dashed ? "8,3,2,3" : null); 
 
     legend.append("text")
       .attr("x", 70).attr("y", y + 4)
@@ -1964,7 +1985,7 @@ function addLegends(svg, SVG_W, { inLegendRow = false } = {}) {
       .text(e.label);
   });
 
-  // ===== BEST PATH LEGEND =====
+  // BEST PATH LEGEND
 const bestY = edgeY + 16 + edgeSamples.length * 18 + 26;
 
 legend.append("text")
@@ -2023,7 +2044,7 @@ function makePanelDraggable(panel, handleSelector = '.influence-header') {
   let startLeft = 0, startTop = 0;
 
   handle.addEventListener('mousedown', (e) => {
-    // avoid dragging when clicking the close button etc.
+    // avoid dragging when clicking the close button
     if (e.target.closest('button')) return;
 
     isDragging = true;
@@ -2032,7 +2053,7 @@ function makePanelDraggable(panel, handleSelector = '.influence-header') {
 
     const rect = panel.getBoundingClientRect();
 
-    // Convert current position to left/top (in case you started with right:)
+    // Convert current position to left/top 
     panel.style.left = rect.left + 'px';
     panel.style.top  = rect.top  + 'px';
     panel.style.right = 'auto';   // stop being anchored by "right"
@@ -2413,7 +2434,7 @@ function renderModuleSummary(rawModuleData, moduleId) {
   const container = d3.select('#stats-table-container').html('');
   const cleanId = String(moduleId).trim();
 
-  // --- Resolve the module block from whatever I got ---
+  // Resolve the module block from whatever I got 
   let moduleData = null;
 
   if (rawModuleData) {
@@ -2469,6 +2490,7 @@ function renderModuleSummary(rawModuleData, moduleId) {
           <th style="padding:4px 6px; border-bottom:1px solid #ccc;">Score</th>
           <th style="padding:4px 6px; border-bottom:1px solid #ccc;">Overlap_Group_Winner</th>
           <th style="padding:4px 6px; border-bottom:1px solid #ccc;">Overlap_Group_Winner_Score</th>
+          <th style="padding:4px 6px; border-bottom:1px solid #ccc;">Best Path</th>
         </tr>
       </thead>
       <tbody>
@@ -2495,7 +2517,7 @@ function renderModuleSummary(rawModuleData, moduleId) {
       <td style="padding:4px 6px; border-bottom:1px solid #eee;">${score == null ? "—" : score}</td>
       <td style="padding:4px 6px; border-bottom:1px solid #eee;">${showOGW ? ogwNorm : "—"}</td>
       <td style="padding:4px 6px; border-bottom:1px solid #eee;">${showOGW && ogws != null ? ogws : "—"}</td>
-    </tr>
+      <td style="padding:4px 6px; border-bottom:1px solid #eee;">${window.bestPathKos && window.bestPathKos.has(baseNorm) ? "<span style='color:grey; font-weight:600;'>✓</span>" : "—"}</td></tr>
   `;
 }).join("")}
 

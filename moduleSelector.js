@@ -6,8 +6,8 @@ console.log("renderGraph type:", typeof renderGraph);
 
 // fallback graph geometry
 // The uploaded JSON will take priority over these
-export const nodesURL     = "https://raw.githubusercontent.com/NehaSontakk/Graph-Viz/refs/heads/main/all_module_nodes_Mar26-2.json";
-export const adjacencyURL = "https://raw.githubusercontent.com/NehaSontakk/Graph-Viz/refs/heads/main/all_module_adjacency_links_Mar26-2.json";
+export const nodesURL     = "https://raw.githubusercontent.com/NehaSontakk/blimmp-explorer/refs/heads/main/all_module_nodes_13AUG2026.json";
+export const adjacencyURL = "https://raw.githubusercontent.com/NehaSontakk/blimmp-explorer/refs/heads/main/all_module_adjacency_links_13AUG2026.json";
 
 let uploadedNodesData = null;
 window.currentModuleNodes = null;
@@ -416,7 +416,7 @@ document.getElementById("download-pdf-btn")?.addEventListener("click", async () 
 
 
   // loads the bundled example file and renders the first module found in it
-  const EXAMPLE_JSON_URL = "./Ver4__BLIMMP_modules.json"; 
+  const EXAMPLE_JSON_URL = "https://raw.githubusercontent.com/NehaSontakk/blimmp-explorer/refs/heads/main/Ver4__BLIMMP_modules.json"; 
   const exampleBtn = document.getElementById("load-example-btn");
 
   if (exampleBtn) exampleBtn.addEventListener("click", async () => {
